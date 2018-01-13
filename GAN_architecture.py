@@ -24,26 +24,34 @@ def load_data():
     ])
     dataset = ImageDataset("/home/yuriy/Cats/Cats_color", "/home/yuriy/Cats/Cats_B&W")
     loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
-    print(len(dataset.images_color_lst))
-    print(len(dataset.images_b_and_w_lst))
-
     return loader
 
 
 
 class Discriminator(nn.Module):
-    def __init__(self):
+    def __init__(self, dim):
+        assert dim // 2
         super().__init__()
-        self.fc_1 = nn.Linear(16384, 32768)
+        # self.fc_1 = nn.Linear(16384, 32768)
+        #
+        # self.fc_2_bn = nn.BatchNorm2d(0.3),
+        # self.fc_3 = nn.Linear(32768, 16384),
+        #
+        # self.fc_4_bn = nn.BatchNorm2d(0.3),
+        # self.fc_5 = nn.Linear(16384, 8192),
+        #
+        # self.fc_6_bn = nn.BatchNorm2d(0.3),
+        # self.fc_7 = nn.Linear(8192, 1),
 
+        self.fc_1 = nn.Linear(dim ** 2, dim ** 2  * 2)
         self.fc_2_bn = nn.BatchNorm2d(0.3),
-        self.fc_3 = nn.Linear(32768, 16384),
+        self.fc_3 = nn.Linear(dim ** 2 * 2, dim ** 2 ),
 
         self.fc_4_bn = nn.BatchNorm2d(0.3),
-        self.fc_5 = nn.Linear(16384, 8192),
+        self.fc_5 = nn.Linear(dim  ** 2, dim ** 2 / 2),
 
         self.fc_6_bn = nn.BatchNorm2d(0.3),
-        self.fc_7 = nn.Linear(8192, 1),
+        self.fc_7 = nn.Linear(dim ** 2 / 2, 1),
 
 
 
@@ -58,12 +66,17 @@ class Discriminator(nn.Module):
 
 
 class Generator(nn.Module):
-    def __init__(self):
+    def __init__(self, dim):
+        assert  dim // 2
         super().__init__()
-        self.fc_1 = nn.Linear(1024, 2048),
-        self.fc_2 = nn.Linear(2048, 4096),
-        self.fc_3 = nn.Linear(4096, 8192),
-        self.fc_4 = nn.Linear(8192, 16384),
+        # self.fc_1 = nn.Linear(1024, 2048),
+        # self.fc_2 = nn.Linear(2048, 4096),
+        # self.fc_3 = nn.Linear(4096, 8192),
+        # self.fc_4 = nn.Linear(8192, 16384),
+        self.fc_1 = nn.Linear(dim**2 / 16, dim**2 / 8),
+        self.fc_2 = nn.Linear(dim**2 / 8, dim**2 / 4),
+        self.fc_3 = nn.Linear(dim**2 / 4, dim**2 / 2),
+        self.fc_4 = nn.Linear(dim**2 / 2, dim**2 / 16),
 
 
     def forward(self, x):
@@ -83,8 +96,8 @@ def train_GAN(use_cuda=False):
 
     lr = 0.0002
     betas = (0.5, 0.999)
-    discriminator = Discriminator()
-    generator = Generator()
+    discriminator = Discriminator(128)
+    generator = Generator(128)
 
     criterion = nn.BCELoss()
     d_optimizer = torch.optim.Adam(discriminator.parameters(), lr=lr, betas=betas)
@@ -108,7 +121,7 @@ def train_GAN(use_cuda=False):
 
 
             # Sample data from generator
-            noise = Variable(torch.randn(true_images.size(0), 1024)) # generator input is 100
+            noise = Variable(torch.randn(true_images.size(0), 1024)) # generator input is 100  ToDo: HOW DO WE GET 1024????
             fake_labels = Variable(torch.zeros(true_images.size(0)))
 
             if use_cuda:
