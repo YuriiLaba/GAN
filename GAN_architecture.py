@@ -21,9 +21,10 @@ def load_data():
 
     transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
+        # transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
     ])
-    dataset = ImageDataset("/data/Cats_color_32", "/data/Cats_B&W_32")
+    dataset = ImageDataset("/data/Cats_color_32", "/data/Cats_B&W_32", transform=transform)
+    # dataset = ImageDataset("/home/yuriy/Cats/Cats_32/Cats_color_32", "/home/yuriy/Cats/Cats_32/Cats_B&W_32", transform=transform)
     loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
     return loader
 
@@ -42,17 +43,18 @@ class Discriminator(nn.Module):
         #
         # self.fc_6_bn = nn.BatchNorm2d(0.3),
         # self.fc_7 = nn.Linear(8192, 1),
-
+        self.dim = dim
         self.fc_1 = nn.Linear(dim ** 2, dim ** 2 * 2)
-        self.fc_2 = nn.Linear(dim ** 2 * 2, dim ** 2),
-        self.fc_2_bn = nn.BatchNorm1d(dim ** 2),
+        self.fc_2 = nn.Linear(dim ** 2 * 2, dim ** 2)
+        self.fc_2_bn = nn.BatchNorm1d(dim ** 2)
 
-        self.fc_3 = nn.Linear(dim ** 2, dim ** 2 // 2),
-        self.fc_3_bn = nn.BatchNorm1d(dim ** 2 // 2),
+        self.fc_3 = nn.Linear(dim ** 2, dim ** 2 // 2)
+        self.fc_3_bn = nn.BatchNorm1d(dim ** 2 // 2)
 
-        self.fc_4 = nn.Linear(dim ** 2 // 2, 1),
+        self.fc_4 = nn.Linear(dim ** 2 // 2, 1)
 
     def forward(self, x):
+        print(x.size())
         x = F.leaky_relu(self.fc_1(x), 0.2)
         x = F.leaky_relu(self.fc_2_bn(self.fc_2(x)), 0.2)
         x = F.leaky_relu(self.fc_3_bn(self.fc_3(x)), 0.2)
@@ -65,17 +67,17 @@ class Generator(nn.Module):
     def __init__(self, dim):
         assert dim // 2
         super().__init__()
+        self.dim = dim
         # self.fc_1 = nn.Linear(1024, 2048),
         # self.fc_2 = nn.Linear(2048, 4096),
         # self.fc_3 = nn.Linear(4096, 8192),
-        # self.fc_4 = nn.Linear(8192, 16384),
-        self.fc_1 = nn.Linear(dim ** 2 // 16, dim ** 2 // 8),
-        self.fc_2 = nn.Linear(dim ** 2 // 8, dim ** 2 // 4),
-        self.fc_3 = nn.Linear(dim ** 2 // 4, dim ** 2 // 2),
-        self.fc_4 = nn.Linear(dim ** 2 // 2, dim ** 2 // 16),
+        # self.fc_4 = nn.Linear(8192, 16384)
+        self.fc_1 = nn.Linear(100, dim ** 2 // 8)
+        self.fc_2 = nn.Linear(dim ** 2 // 8, dim ** 2 // 4)
+        self.fc_3 = nn.Linear(dim ** 2 // 4, dim ** 2 // 2)
+        self.fc_4 = nn.Linear(dim ** 2 // 2, dim ** 2)
 
     def forward(self, x):
-        x = x.view(x.size(0), 100)
         x = F.leaky_relu(self.fc_1(x), 0.2)
         x = F.leaky_relu(self.fc_2(x), 0.2)
         x = F.leaky_relu(self.fc_3(x), 0.2)
@@ -96,9 +98,13 @@ def train_GAN(use_cuda=False):
         discriminator = discriminator.cuda()
         generator = generator.cuda()
 
+    # print(len(list(discriminator.parameters())))
+    # print(list(generator.parameters()))
     criterion = nn.BCELoss()
     d_optimizer = torch.optim.Adam(list(discriminator.parameters()), lr=lr, betas=betas)
     g_optimizer = torch.optim.Adam(list(generator.parameters()), lr=lr, betas=betas)
+
+
 
 
     num_epochs = 200
@@ -112,7 +118,7 @@ def train_GAN(use_cuda=False):
 
             # Sample data from generator
             noise = Variable(
-                torch.randn(true_images.size(0), 1024))  # generator input is 100  ToDo: HOW DO WE GET 1024????
+                torch.randn(true_images.size(0), 100))  # generator input is 100  ToDo: HOW DO WE GET 1024????
             fake_labels = Variable(torch.zeros(true_images.size(0)))
 
             if use_cuda:
@@ -133,7 +139,7 @@ def train_GAN(use_cuda=False):
             d_optimizer.step()
 
             # Sample from generator
-            noise = Variable(torch.randn(b_and_w_images.size(0), 1024))
+            noise = Variable(torch.randn(b_and_w_images.size(0), 100))
             if use_cuda:
                 noise = noise.cuda()
 

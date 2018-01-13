@@ -23,14 +23,15 @@ class ImageDataset(data.Dataset):
 
 
     def __len__(self):
-        return len(self.images_color_lst) + len(self.images_b_and_w_lst)
+        return len(self.images_color_lst)
 
     def __getitem__(self, index):
         image_color = Image.open(self.images_color_lst[index])
         image_b_and_w = Image.open(self.images_b_and_w_lst[index]).convert('L')
 
-        # if self.transform is not None:
-            # image = self.transform(image)
+        if self.transform is not None:
+            image_color = self.transform(image_color)
+            image_b_and_w = self.transform(image_b_and_w)
 
         return image_color, image_b_and_w
 
