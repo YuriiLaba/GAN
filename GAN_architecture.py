@@ -6,6 +6,8 @@ from torch.autograd import Variable
 from torchvision import transforms
 import torch.nn.functional as F
 
+from manipulation import save_images
+
 # from manipulation import save_images
 
 # Settings
@@ -54,7 +56,7 @@ class Discriminator(nn.Module):
         self.fc_4 = nn.Linear(dim ** 2 // 2, 1)
 
     def forward(self, x):
-        print(x.size())
+        # print(x.size())
         x = F.leaky_relu(self.fc_1(x), 0.2)
         x = F.leaky_relu(self.fc_2_bn(self.fc_2(x)), 0.2)
         x = F.leaky_relu(self.fc_3_bn(self.fc_3(x)), 0.2)
@@ -157,10 +159,14 @@ def train_GAN(use_cuda=False):
 
 
             # Testing our result on each epoch
-            # test_noise = Variable(torch.randn(num_of_samples, 100)).cuda()
-            # test_images = generator(test_noise)
-            # test_images = test_images.view(num_of_samples, 128, 128).data.cpu().numpy()
-            # save_images(test_images, filename="epoch_{}.png".format(epoch + 1))
+            test_noise = Variable(torch.randn(num_of_samples, 100))
+
+            if use_cuda:
+                test_noise = Variable(torch.randn(num_of_samples, 100)).cuda()
+
+            test_images = generator(test_noise)
+            test_images = test_images.view(num_of_samples, DIM, DIM).data.cpu().numpy()
+            save_images(test_images, filename="/output/epoch_{}.png".format(epoch + 1))
 
 
 if __name__ == "__main__":

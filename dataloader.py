@@ -7,19 +7,23 @@ from torchvision import transforms
 from PIL import Image
 
 class ImageDataset(data.Dataset):
-    def __init__(self, color_images, b_and_w_images, transform=None):
-        self.color_images = color_images
-        self.b_and_w_images = b_and_w_images
+    def __init__(self, color_images_path, b_and_w_images_path, lower_bound=0, upper_bound=1000, transform=None):
+        self.color_images = color_images_path
+        self.b_and_w_images = b_and_w_images_path
         self.transform = transform
         self.images_color_lst = []
         self.images_b_and_w_lst = []
 
+        filenames_colour = os.listdir(color_images_path)
+        filenames_bw = os.listdir(b_and_w_images_path)
 
-        for file_name in os.listdir(color_images):
-            self.images_color_lst.append(color_images + "/" + file_name)
+        upper_bound = min(len(filenames_colour), upper_bound)
 
-        for file_name in os.listdir(b_and_w_images):
-            self.images_b_and_w_lst.append(b_and_w_images + "/" + file_name)
+        for file_name in filenames_colour[lower_bound: upper_bound]:
+            self.images_color_lst.append(color_images_path + "/" + file_name)
+
+        for file_name in filenames_bw[lower_bound: upper_bound]:
+            self.images_b_and_w_lst.append(b_and_w_images_path + "/" + file_name)
 
 
     def __len__(self):
