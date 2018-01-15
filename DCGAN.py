@@ -21,7 +21,7 @@ def load_data(lower_bound=0, upper_bound=1000):
         transforms.ToTensor(),
         # transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
     ])
-    dataset = ImageDataset("/data/Cats_color_32", "/data/Cats_B&W_32", transform=transform, lower_bound=lower_bound, upper_bound=upper_bound)
+    dataset = ImageDataset("/data/Cats_color_128", "/data/Cats_B&W_128", transform=transform, lower_bound=lower_bound, upper_bound=upper_bound)
     # dataset = ImageDataset("/home/yuriy/Cats/Cats_32/Cats_color_32", "/home/yuriy/Cats/Cats_32/Cats_B&W_32", transform=transform)
     loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
     return loader
@@ -50,9 +50,10 @@ class Discriminator(nn.Module):
         x = F.leaky_relu(self.conv_3_bn(self.conv_3(x)), 0.1)
         x = F.leaky_relu(self.conv_4_bn(self.conv_4(x)), 0.1)
         # should be corrected if new image arrive
-        x = min(x.view(-1))
-        # x = F.sigmoid(self.fc(x))
         x = F.sigmoid((self.conv_5(x)))
+        x = x.view(-1).mean()
+        # x = F.sigmoid(self.fc(x))
+
         return x
 
 class Generator(nn.Module):
@@ -60,35 +61,43 @@ class Generator(nn.Module):
         super().__init__()
         self.dim = dim
         # self.fc = nn.Linear(14 * 14, 4 * 4 * dim)
-        self.conv_1 = nn.Conv2d(1, 32, 3, stride=2, padding=2)
-        self.conv_2 = nn.Conv2d(32, 64, 3, stride=2, padding=2)
-        self.conv_3 = nn.Conv2d(64, 128, 3, stride=2, padding=2)
-        self.conv_4 = nn.Conv2d(128, 128, 3, stride=2, padding=2)
+        self.conv_1 = nn.Conv2d(1, 32, 3, stride=2, padding=1)
+        self.conv_2 = nn.Conv2d(32, 64, 3, stride=2, padding=3)
+        self.conv_3 = nn.Conv2d(64, 128, 3, stride=2, padding=3)
+        # self.conv_4 = nn.Conv2d(128, 128, 3, stride=2, padding=2)
 
-        self.deconv_1 = nn.ConvTranspose2d(128, 128, 3, stride=2, padding=2)
-        self.deconv_2 = nn.ConvTranspose2d(128, 64, 3, stride=2, padding=2)
-        self.deconv_3 = nn.ConvTranspose2d(64, 32, 3, stride=2, padding=2)
-        self.deconv_4 = nn.ConvTranspose2d(32, 3, 3, stride=2, padding=2)
-
+        # self.deconv_1 = nn.ConvTranspose2d(128, 128, 3, stride=2, padding=2)
+        self.deconv_1 = nn.ConvTranspose2d(128, 64, 3, stride=2, padding=3)
+        self.deconv_2 = nn.ConvTranspose2d(64, 32, 3, stride=2, padding=3)
+        self.deconv_3 = nn.ConvTranspose2d(32, 3, 3, stride=2, padding=1)
         self.conv_1_bn = nn.BatchNorm2d(32)
         self.conv_2_bn = nn.BatchNorm2d(64)
         self.conv_3_bn = nn.BatchNorm2d(128)
 
+        self.conv_4_bn = nn.BatchNorm2d(64)
+        self.conv_5_bn = nn.BatchNorm2d(32)
+
+        # self.conv_6_bn = nn.BatchNorm2d(128)
 
     def forward(self, x):
         # x = self.fc(x)
-        x = x.view(-1, self.dim, 4, 4)
         x = F.leaky_relu(self.conv_1_bn(self.conv_1(x)))
+        print(x.size())
         x = F.leaky_relu(self.conv_2_bn(self.conv_2(x)))
+        print(x.size())
         x = F.leaky_relu(self.conv_3_bn(self.conv_3(x)))
-        x = F.leaky_relu(self.conv_3_bn(self.conv_4(x)))
+        print(x.size())
+        x = F.leaky_relu(self.conv_4_bn(self.deconv_1(x)))
+        print(x.size())
 
-        x = F.leaky_relu(self.conv_1_bn(self.deconv_1(x)))
-        x = F.leaky_relu(self.conv_2_bn(self.deconv_2(x)))
-        x = F.leaky_relu(self.conv_3_bn(self.deconv_3(x)))
+        x = F.leaky_relu(self.conv_5_bn(self.deconv_2(x)))
+        print(x.size())
 
 
-        x = F.tanh(self.deconv_4(x))
+
+
+        x = F.tanh(self.deconv_3(x))
+
 
         return x
 
@@ -138,7 +147,7 @@ def train_GAN(use_cuda=False):
             labels_0 = Variable(torch.zeros(minibatch))
 
             if use_cuda:
-                color_images, labels_0, labels_1 = color_images.cuda(), labels_0.cuda(), labels_1.cuda()#, damaged.cuda()
+                color_images, b_and_w_images, labels_0, labels_1 = color_images.cuda(), b_and_w_images.cuda(), labels_0.cuda(), labels_1.cuda()#, damaged.cuda()
 
             # Generator training
             generated_images = generator(b_and_w_images)
@@ -170,7 +179,7 @@ def train_GAN(use_cuda=False):
             test_noise = test_noise.cuda()
 
         test_images_colour = generator(test_images_bw)
-        test_images_colour =  test_images_colour.view(num_of_samples, 28, 28).data.cpu().numpy()
+        test_images_colour = test_images_colour.view(num_of_samples, 28, 28).data.cpu().numpy()
         filename = "/output/epoch_{}.png" if use_cuda else "samples/epoch_{}.png"
         save_images(test_images_colour, filename=filename.format(epoch + 1), width=10)
 
