@@ -31,13 +31,15 @@ def load_data(lower_bound=0, upper_bound=1000):
 class Discriminator(nn.Module):
     def __init__(self, dim, channels=1):
         super().__init__()
-        self.conv_1 = nn.Conv2d(1, 32, 3, stride=2, padding=2)
+        self.conv_1 = nn.Conv2d(3, 32, 3, stride=2, padding=2)
         self.conv_2 = nn.Conv2d(32, 64, 3, stride=2, padding=2)
         self.conv_3 = nn.Conv2d(64, 128, 3, stride=2, padding=2)
-        self.conv_4 = nn.Conv2d(128, 128, 3, stride=2, padding=2)
+        self.conv_4 = nn.Conv2d(128, 64, 3, stride=2, padding=2)
+        self.conv_5= nn.Conv2d(64, 1, 3, stride=2, padding=2)
         self.conv_1_bn = nn.BatchNorm2d(32)
         self.conv_2_bn = nn.BatchNorm2d(64)
         self.conv_3_bn = nn.BatchNorm2d(128)
+        self.conv_4_bn = nn.BatchNorm2d(64)
 
         # should be corrected if new image arrive
         # self.fc = nn.Linear(dim * 4 * 4, 1)
@@ -46,10 +48,11 @@ class Discriminator(nn.Module):
         x = F.leaky_relu(self.conv_1(x), 0.1)
         x = F.leaky_relu(self.conv_2_bn(self.conv_2(x)), 0.1)
         x = F.leaky_relu(self.conv_3_bn(self.conv_3(x)), 0.1)
+        x = F.leaky_relu(self.conv_4_bn(self.conv_4(x)), 0.1)
         # should be corrected if new image arrive
-        x = x.view(-1, self.dim * 4 * 4)
+        x = min(x.view(-1))
         # x = F.sigmoid(self.fc(x))
-        x = F.sigmoid((self.conv_4(x)))
+        x = F.sigmoid((self.conv_5(x)))
         return x
 
 class Generator(nn.Module):
