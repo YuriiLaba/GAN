@@ -161,5 +161,6 @@ def train_GAN(use_cuda=False):
         filename = "/output/epoch_{}.png" if use_cuda else "samples/epoch_{}.png"
         save_images(test_images_colored, filename=filename.format(epoch + 1), width=10, size=(3, 128, 128))
 
+
 if __name__ == "__main__":
     train_GAN(True)
