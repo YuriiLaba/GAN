@@ -101,7 +101,7 @@ def train_GAN(use_cuda=False, numb_style_images=100):
     # gram_style = [gram_matrix(y) for y in features_style]
 
 
-
+    styles = get_gram_matrices(next(iter(train_loader)))
 
     if use_cuda:
         discriminator = discriminator.cuda()
