@@ -96,24 +96,39 @@ def train_GAN(use_cuda=False, styleimage):
     discriminator = Discriminator()
     generator = Generator()
     vgg = Vgg16(requires_grad=False)
-    style_transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Lambda(lambda x: x.mul(255))
-    ])
-    style = Image.open(styleimage)
-    style = style_transform(style)
-    # style = style.repeat(args.batch_size, 1, 1, 1)
+    # style_transform = transforms.Compose([
+    #     transforms.ToTensor(),
+    #     transforms.Lambda(lambda x: x.mul(255))
+    # ])
+    # style = Image.open(styleimage)
+    # style = style_transform(style)
+    # # style = style.repeat(args.batch_size, 1, 1, 1)
+    #
+    # if use_cuda:
+    #     vgg.cuda()
+    #     style = style.cuda()
+    #
+    # style_v = Variable(style)
+    # style_v = F.batch_norm(style_v)
+    # features_style = vgg(style_v)
+    #
+    #
+    # gram_style = [gram_matrix(y) for y in features_style]
 
-    if use_cuda:
-        vgg.cuda()
-        style = style.cuda()
+    styles = []
+    for (color_img, bw_img) in train_loader:
+        if use_cuda:
+            vgg.cuda()
+            color_img = color_img.cuda()
 
-    style_v = Variable(style)
-    style_v = F.batch_norm(style_v)
-    features_style = vgg(style_v)
+            color_img_v = Variable(color_img)
+            color_img_v = F.batch_norm(color_img_v)
+            features_style = vgg(color_img_v)
 
 
-    gram_style = [gram_matrix(y) for y in features_style]
+            gram_style = [gram_matrix(y) for y in features_style]
+            styles.append(gram_style)
+
 
     if use_cuda:
         discriminator = discriminator.cuda()
@@ -148,9 +163,16 @@ def train_GAN(use_cuda=False, styleimage):
             gen_img_features = vgg(generated_images_n)
 
             styleloss = 0
-            for ft_y, gm_s in zip(gen_img_features, gram_style):
-                gm_y = gram_matrix(gen_img_features)
-                styleloss += criterion_MSE(gm_y, gm_s[:n_batch, :, :])
+            # for ft_y, gm_s in zip(gen_img_features, gram_style):
+            #     gm_y = gram_matrix(gen_img_features)
+            #     styleloss += criterion_MSE(gm_y, gm_s[:n_batch, :, :])  #perceptial loss
+
+
+            for style_img in styles:
+                for ft_y, gm_s in zip(gen_img_features, style_img):
+                    gm_y = gram_matrix(gen_img_features)
+                    styleloss += criterion_MSE(gm_y, gm_s[:n_batch, :, :])  #perceptial loss
+
 
             loss_img = criterion_MSE(generated_images, color_images)
             loss_1 = criterion_BCE(out, labels_1)
