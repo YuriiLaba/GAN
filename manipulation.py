@@ -9,8 +9,8 @@ from torch.autograd import Variable
 
 def save_images(images, size=(32, 32), filename='sample.png', width=8):
     for i, img in enumerate(images):
-        img = img.reshape(size)
+        img = img.reshape(size).swapaxes(0,2)
         plt.subplot(ceil(len(images) / width), width, i + 1)
         plt.axis('off')
-        plt.imshow(img, cmap='gray')
+        plt.imshow(img)
     plt.savefig(filename)
