@@ -81,8 +81,8 @@ class Generator(nn.Module):
 
 def train_GAN(use_cuda=False):
     path = "/data/" if use_cuda else "/home/dobosevych/Documents/Cats/"
-    train_loader = load_data(path, upper_bound=18000)
-    test_loader = load_data(path, lower_bound=18000, upper_bound=22000)
+    train_loader = load_data(path, upper_bound=21000)
+    test_loader = load_data(path, lower_bound=21000, upper_bound=22000)
 
     lr = 0.0002
     betas = (0.5, 0.999)
@@ -147,8 +147,13 @@ def train_GAN(use_cuda=False):
 
         test_images_colored = generator(test_images_bw)
         test_images_colored = test_images_colored.view(num_of_samples, 3, 128, 128).data.cpu().numpy()
-        filename = "/output/epoch_{}.png" if use_cuda else "samples/epoch_{}.png"
-        save_images(test_images_colored, filename=filename.format(epoch + 1), width=10, size=(3, 128, 128))
+        filename_colored = "/output/epoch_{}/colored/sample" if use_cuda else "samples/epoch_{}/colored/sample"
+        filename_bw = "/output/epoch_{}/black_and_white/sample" if use_cuda else "samples/epoch_{}/black_and_white/sample"
+        filename_color = "/output/epoch_{}/incolor/sample" if use_cuda else "samples/epoch_{}/incolor/sample"
+
+        save_images(test_images_colored, filename=filename_colored.format(epoch + 1), width=10, size=(3, 128, 128))
+        save_images(test_images_bw, filename=filename_bw.format(epoch + 1), width=10, size=(3, 128, 128))
+        save_images(test_images_color, filename=filename_color.format(epoch + 1), width=10, size=(3, 128, 128))
 
 
 if __name__ == "__main__":
