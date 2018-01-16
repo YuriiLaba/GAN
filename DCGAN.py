@@ -7,10 +7,17 @@ from torchvision import transforms
 import torchvision.datasets as dsets
 import torch.nn.functional as F
 import numpy as np
-
+from vgg import Vgg16
 from manipulation import save_images
 
 from dataloader import *
+
+def gram_matrix(y):
+    (b, ch, h, w) = y.size()
+    features = y.view(b, ch, w * h)
+    features_t = features.transpose(1, 2)
+    gram = features.bmm(features_t) / (ch * h * w)
+    return gram
 
 def load_data(path, lower_bound=0, upper_bound=1000):
     batch_size = 100
@@ -79,7 +86,7 @@ class Generator(nn.Module):
         return x
 
 
-def train_GAN(use_cuda=False):
+def train_GAN(use_cuda=False, styleimage):
     path = "/data/" if use_cuda else "/home/dobosevych/Documents/Cats/"
     train_loader = load_data(path, upper_bound=21000)
     test_loader = load_data(path, lower_bound=21000, upper_bound=22000)
@@ -88,6 +95,25 @@ def train_GAN(use_cuda=False):
     betas = (0.5, 0.999)
     discriminator = Discriminator()
     generator = Generator()
+    vgg = Vgg16(requires_grad=False)
+    style_transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Lambda(lambda x: x.mul(255))
+    ])
+    style = Image.open(styleimage)
+    style = style_transform(style)
+    # style = style.repeat(args.batch_size, 1, 1, 1)
+
+    if use_cuda:
+        vgg.cuda()
+        style = style.cuda()
+
+    style_v = Variable(style)
+    style_v = F.batch_norm(style_v)
+    features_style = vgg(style_v)
+
+
+    gram_style = [gram_matrix(y) for y in features_style]
 
     if use_cuda:
         discriminator = discriminator.cuda()
@@ -104,7 +130,7 @@ def train_GAN(use_cuda=False):
     for epoch in range(num_epochs):
         for i, (color_images, b_and_w_images) in enumerate(train_loader):
             minibatch = color_images.size(0)
-
+            n_batch = len(color_images)
             # damaged = make_damaged(images)
             # damaged = Variable(damaged)
             color_images = Variable(color_images)
@@ -118,9 +144,18 @@ def train_GAN(use_cuda=False):
             # Generator training
             generated_images = generator(b_and_w_images)
             out = discriminator(generated_images)
+            generated_images_n = F.batch_norm(generated_images)
+            gen_img_features = vgg(generated_images_n)
+
+            styleloss = 0
+            for ft_y, gm_s in zip(gen_img_features, gram_style):
+                gm_y = gram_matrix(gen_img_features)
+                styleloss += criterion_MSE(gm_y, gm_s[:n_batch, :, :])
+
             loss_img = criterion_MSE(generated_images, color_images)
             loss_1 = criterion_BCE(out, labels_1)
-            g_loss = 100 * loss_img + loss_1
+            # g_loss = 100 * loss_img + loss_1
+            g_loss = styleloss + loss_1
             g_loss.backward()
             g_optimizer.step()
 
