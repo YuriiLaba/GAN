@@ -78,17 +78,6 @@ class Generator(nn.Module):
         x = F.tanh(self.deconv_3(x))
         return x
 
-# # TODO: Correct later
-# def make_damaged(images):
-#     damaged = images.view(-1, DIM, 28).numpy()
-#     new_damaged = np.zeros((images.size(0), 14, 14))
-#     for j, img in enumerate(damaged):
-#         new_img = Image.fromarray(np.uint8(img))
-#         new_img = new_img.resize((14, 14))
-#         new_img = np.asarray(new_img)
-#         new_damaged[j] = (new_img / 255).astype(np.float)
-#     damaged = torch.from_numpy(new_damaged).view(-1, 14 * 14).float()
-#     return damaged
 
 def train_GAN(use_cuda=False):
     path = "/data/" if use_cuda else "/home/dobosevych/Documents/Cats/"
