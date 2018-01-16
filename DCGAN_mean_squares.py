@@ -7,11 +7,11 @@ from torchvision import transforms
 import torchvision.datasets as dsets
 import torch.nn.functional as F
 import numpy as np
-
+from vgg import Vgg16
 from manipulation import save_images
 
 from dataloader import *
-
+from utils import *
 
 
 
@@ -51,7 +51,7 @@ class Generator(nn.Module):
         self.conv_3 = nn.Conv2d(64, 128, 3, stride=2)
         self.deconv_1 = nn.ConvTranspose2d(128, 64, 3, stride=2)
         self.deconv_2 = nn.ConvTranspose2d(64, 32, 3, stride=2)
-        self.deconv_3 = nn.ConvTranspose2d(32, 1, 4, stride=2)
+        self.deconv_3 = nn.ConvTranspose2d(32, 3, 4, stride=2)
 
         self.conv_1_bn = nn.BatchNorm2d(32)
         self.conv_2_bn = nn.BatchNorm2d(64)
@@ -69,16 +69,17 @@ class Generator(nn.Module):
         return x
 
 
-def train_GAN(use_cuda=False):
+def train_GAN(use_cuda=False, numb_style_images=100):
     path = "/data/" if use_cuda else "/home/dobosevych/Documents/Cats/"
     train_loader = load_data(path, upper_bound=21000)
-
+    test_loader = load_data(path, lower_bound=21000, upper_bound=22000)
 
     lr = 0.0002
     betas = (0.5, 0.999)
     discriminator = Discriminator()
     generator = Generator()
-
+    if use_cuda:
+        vgg.cuda()
 
 
     if use_cuda:
@@ -87,63 +88,63 @@ def train_GAN(use_cuda=False):
 
     d_optimizer = Adam(discriminator.parameters(), lr=lr, betas=betas)
     g_optimizer = Adam(generator.parameters(), lr=lr, betas=betas)
-    criterion = nn.BCELoss()
+    criterion_BCE = nn.BCELoss()
+    criterion_MSE = nn.MSELoss()
 
-    num_epochs = 100
+    num_epochs = 20
     num_of_samples = 100
 
     for epoch in range(num_epochs):
         for i, (color_images, b_and_w_images) in enumerate(train_loader):
-            true_images = Variable(b_and_w_images.view(-1, DIM * DIM))  # discriminator input is 28 * 28
-            true_labels = Variable(torch.ones(true_images.size(0)))
-
-            # Sample data from generator
-            noise = Variable(
-                torch.randn(true_images.size(0), 100))  # generator input is 100  ToDo: HOW DO WE GET 1024????
-            fake_labels = Variable(torch.zeros(true_images.size(0)))
+            minibatch = color_images.size(0)
+            color_images = Variable(color_images)
+            b_and_w_images = Variable(b_and_w_images)
+            labels_1 = Variable(torch.ones(minibatch))
+            labels_0 = Variable(torch.zeros(minibatch))
 
             if use_cuda:
-                true_images, noise, fake_labels, true_labels = true_images.cuda(), noise.cuda(), fake_labels.cuda(), true_labels.cuda()
-
-            fake_images = generator(noise)
-
-            # Discriminator training
-            discriminator.zero_grad()
-            out1 = discriminator(true_images)
-            true_loss = criterion(out1, true_labels)
-
-            out2 = discriminator(fake_images)
-            fake_loss = criterion(out2, fake_labels)
-
-            d_loss = true_loss + fake_loss
-            d_loss.backward()
-            d_optimizer.step()
-
-            # Sample from generator
-            noise = Variable(torch.randn(b_and_w_images.size(0), 100))
-            if use_cuda:
-                noise = noise.cuda()
-
-            fake_images = generator(noise)
-            out = discriminator(fake_images)
+                color_images, b_and_w_images, labels_0, labels_1 = color_images.cuda(), b_and_w_images.cuda(), labels_0.cuda(), labels_1.cuda()#, damaged.cuda()
 
             # Generator training
-            generator.zero_grad()
-            g_loss = criterion(out, true_labels)
+            generated_images = generator(b_and_w_images)
+            out = discriminator(generated_images)
+            loss_img = criterion_MSE(generated_images, color_images)
+            loss_1 = criterion_BCE(out, labels_1)
+            g_loss = 100 * loss_img + loss_1
+            # g_loss = 100 * styleloss + loss_1
             g_loss.backward()
             g_optimizer.step()
 
+            # Discriminator training
+            generated_images = generator(b_and_w_images)
+            discriminator.zero_grad()
+            out_0 = discriminator(generated_images)
+            loss_0 = criterion_BCE(out_0, labels_0)
+
+            out_1 = discriminator(color_images)
+            loss_1 = criterion_BCE(out_1, labels_1)
+
+            d_loss = loss_0 + loss_1
+            d_loss.backward()
+            d_optimizer.step()
+
             print("Epoch: [{}/{}], Step: [{}/{}]".format(epoch + 1, num_epochs, i + 1, len(train_loader)))
 
-        test_noise = Variable(torch.randn(num_of_samples, 100))
+        test_images_color, test_images_bw = next(iter(test_loader))
+        test_images_bw = Variable(test_images_bw)
 
         if use_cuda:
-            test_noise = Variable(torch.randn(num_of_samples, 100)).cuda()
+            test_images_bw = test_images_bw.cuda()
 
-        test_images = generator(test_noise)
-        filename = "/output/epoch_{}/sample" if use_cuda else "samples/epoch_{}/sample"
-        save_images(test_images, filename=filename.format(epoch + 1), width=10, size=(3, 128, 128))
+        test_images_colored = generator(test_images_bw)
+        test_images_colored = test_images_colored.view(num_of_samples, 3, 128, 128).data.cpu().numpy()
+        filename_colored = "/output/epoch_{}/colored/sample" if use_cuda else "samples/epoch_{}/colored/sample"
+        filename_bw = "/output/epoch_{}/black_and_white/sample" if use_cuda else "samples/epoch_{}/black_and_white/sample"
+        filename_color = "/output/epoch_{}/incolor/sample" if use_cuda else "samples/epoch_{}/incolor/sample"
 
+        save_images(test_images_colored, filename=filename_colored.format(epoch + 1), width=10, size=(3, 128, 128))
+        save_images(test_images_bw, filename=filename_bw.format(epoch + 1), width=10, size=(3, 128, 128))
+        save_images(test_images_color, filename=filename_color.format(epoch + 1), width=10, size=(3, 128, 128))
 
 
 if __name__ == "__main__":

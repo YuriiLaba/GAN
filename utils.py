@@ -43,15 +43,9 @@ def load_data(path, lower_bound=0, upper_bound=1000):
 
 
 def get_gram_matrices(images):
-
-
-    # for (color_img, bw_img) in imgs:
-    #     if use_cuda:
-    #         color_img = color_img.cuda()
-
-        # color_img_v = Variable(color_img)
+    styles = []
     images = F.batch_norm(images)
-    features_style = vgg(images)
-    gram_style = [gram_matrix(y) for y in features_style]
+    features_styles = vgg(images)
+    gram_style = [gram_matrix(y)  for features_style in features_styles for y in features_style]
     styles.append(gram_style)
     return styles

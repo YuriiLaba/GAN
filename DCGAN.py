@@ -81,26 +81,6 @@ def train_GAN(use_cuda=False, numb_style_images=100):
     vgg = Vgg16(requires_grad=False)
     if use_cuda:
         vgg.cuda()
-    # style_transform = transforms.Compose([
-    #     transforms.ToTensor(),
-    #     transforms.Lambda(lambda x: x.mul(255))
-    # ])
-    # style = Image.open(styleimage)
-    # style = style_transform(style)
-    # # style = style.repeat(args.batch_size, 1, 1, 1)
-    #
-    # if use_cuda:
-    #     vgg.cuda()
-    #     style = style.cuda()
-    #
-    # style_v = Variable(style)
-    # style_v = F.batch_norm(style_v)
-    # features_style = vgg(style_v)
-    #
-    #
-    # gram_style = [gram_matrix(y) for y in features_style]
-
-
     styles = get_gram_matrices(next(iter(train_loader)))
 
     if use_cuda:
@@ -135,17 +115,13 @@ def train_GAN(use_cuda=False, numb_style_images=100):
 
 
             styleloss = 0
-            # for ft_y, gm_s in zip(gen_img_features, gram_style):
-            #     gm_y = gram_matrix(gen_img_features)
-            #     styleloss += criterion_MSE(gm_y, gm_s[:n_batch, :, :])  #perceptial loss
-
 
             for style_img in styles:
                 styleloss += style_loss(style_img, generated_images, vgg, minibatch)
 
 
 
-            loss_img = criterion_MSE(generated_images, color_images)
+            # loss_img = criterion_MSE(generated_images, color_images)
             loss_1 = criterion_BCE(out, labels_1)
             # g_loss = 100 * loss_img + loss_1
             g_loss = 100 * styleloss + loss_1
