@@ -12,23 +12,7 @@ from manipulation import save_images
 
 from dataloader import *
 
-def gram_matrix(y):
-    (b, ch, h, w) = y.size()
-    features = y.view(b, ch, w * h)
-    features_t = features.transpose(1, 2)
-    gram = features.bmm(features_t) / (ch * h * w)
-    return gram
 
-def load_data(path, lower_bound=0, upper_bound=1000):
-    batch_size = 100
-
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        # transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
-    ])
-    dataset = ImageDataset(path + "Cats_color_128", path + "Cats_B&W_128", transform=transform, lower_bound=lower_bound, upper_bound=upper_bound)
-    loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
-    return loader
 
 
 
@@ -86,7 +70,7 @@ class Generator(nn.Module):
         return x
 
 
-def train_GAN(use_cuda=False, styleimage):
+def train_GAN(use_cuda=False, numb_style_images=100):
     path = "/data/" if use_cuda else "/home/dobosevych/Documents/Cats/"
     train_loader = load_data(path, upper_bound=21000)
     test_loader = load_data(path, lower_bound=21000, upper_bound=22000)
@@ -116,18 +100,21 @@ def train_GAN(use_cuda=False, styleimage):
     # gram_style = [gram_matrix(y) for y in features_style]
 
     styles = []
+    i = 0
     for (color_img, bw_img) in train_loader:
+        if i > numb_style_images:
+            break
         if use_cuda:
             vgg.cuda()
             color_img = color_img.cuda()
 
-            color_img_v = Variable(color_img)
-            color_img_v = F.batch_norm(color_img_v)
-            features_style = vgg(color_img_v)
+        color_img_v = Variable(color_img)
+        color_img_v = F.batch_norm(color_img_v)
+        features_style = vgg(color_img_v)
 
 
-            gram_style = [gram_matrix(y) for y in features_style]
-            styles.append(gram_style)
+        gram_style = [gram_matrix(y) for y in features_style]
+        styles.append(gram_style)
 
 
     if use_cuda:
@@ -145,7 +132,7 @@ def train_GAN(use_cuda=False, styleimage):
     for epoch in range(num_epochs):
         for i, (color_images, b_and_w_images) in enumerate(train_loader):
             minibatch = color_images.size(0)
-            n_batch = len(color_images)
+
             # damaged = make_damaged(images)
             # damaged = Variable(damaged)
             color_images = Variable(color_images)
@@ -159,8 +146,7 @@ def train_GAN(use_cuda=False, styleimage):
             # Generator training
             generated_images = generator(b_and_w_images)
             out = discriminator(generated_images)
-            generated_images_n = F.batch_norm(generated_images)
-            gen_img_features = vgg(generated_images_n)
+
 
             styleloss = 0
             # for ft_y, gm_s in zip(gen_img_features, gram_style):
@@ -169,15 +155,14 @@ def train_GAN(use_cuda=False, styleimage):
 
 
             for style_img in styles:
-                for ft_y, gm_s in zip(gen_img_features, style_img):
-                    gm_y = gram_matrix(gen_img_features)
-                    styleloss += criterion_MSE(gm_y, gm_s[:n_batch, :, :])  #perceptial loss
+                styleloss += style_loss(style_img, generated_images, vgg, minibatch)
+
 
 
             loss_img = criterion_MSE(generated_images, color_images)
             loss_1 = criterion_BCE(out, labels_1)
             # g_loss = 100 * loss_img + loss_1
-            g_loss = styleloss + loss_1
+            g_loss = 100 * styleloss + loss_1
             g_loss.backward()
             g_optimizer.step()
 
