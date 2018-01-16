@@ -79,6 +79,8 @@ def train_GAN(use_cuda=False, numb_style_images=100):
     discriminator = Discriminator()
     generator = Generator()
     vgg = Vgg16(requires_grad=False)
+    if use_cuda:
+        vgg.cuda()
     # style_transform = transforms.Compose([
     #     transforms.ToTensor(),
     #     transforms.Lambda(lambda x: x.mul(255))
@@ -98,22 +100,7 @@ def train_GAN(use_cuda=False, numb_style_images=100):
     #
     # gram_style = [gram_matrix(y) for y in features_style]
 
-    styles = []
-    i = 0
-    for (color_img, bw_img) in train_loader:
-        if i > numb_style_images:
-            break
-        if use_cuda:
-            vgg.cuda()
-            color_img = color_img.cuda()
 
-        color_img_v = Variable(color_img)
-        color_img_v = F.batch_norm(color_img_v)
-        features_style = vgg(color_img_v)
-
-
-        gram_style = [gram_matrix(y) for y in features_style]
-        styles.append(gram_style)
 
 
     if use_cuda:

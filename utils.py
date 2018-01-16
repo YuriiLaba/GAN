@@ -10,6 +10,23 @@ import torchvision.datasets as dsets
 from vgg import Vgg16
 from manipulation import save_images
 
+def get_gram_matrices(loader, numb_style_images=100):
+
+    styles = []
+    i = 0
+    imgs = next(iter(loader))
+    for (color_img, bw_img) in imgs:
+        if i > numb_style_images:
+            break
+        if use_cuda:
+            color_img = color_img.cuda()
+
+        color_img_v = Variable(color_img)
+        color_img_v = F.batch_norm(color_img_v)
+        features_style = vgg(color_img_v)
+        gram_style = [gram_matrix(y) for y in features_style]
+        styles.append(gram_style)
+    return styles
 
 def style_loss(style_img_gram_matrices, gen_img, vgg, minibatch):
     styleloss = 0
