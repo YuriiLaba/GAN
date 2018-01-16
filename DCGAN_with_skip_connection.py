@@ -1,3 +1,5 @@
+#COMMON GAN WITH FULY CONNECTED LAYERS USED FOR IMAGE GENERATION
+
 from PIL import Image
 import torch
 import torch.nn as nn

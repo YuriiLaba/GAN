@@ -1,3 +1,4 @@
+#FEATURE EXTRACTOR NETWORK USED FOR PERCEPTUAL LOSS
 from collections import namedtuple
 
 import torch

@@ -1,3 +1,5 @@
+#DCGAN WITH PERCEPTUAL LOSS FUNCTION USED FOR COLORALIZATION
+
 from PIL import Image
 import torch
 import torch.nn as nn

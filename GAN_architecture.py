@@ -1,3 +1,4 @@
+#COMMON GAN USED FOR IMAGE GENERATION
 import torch
 import torchvision
 import torch.nn as nn
