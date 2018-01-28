@@ -15,15 +15,15 @@ class ImageDataset(data.Dataset):
         self.images_b_and_w_lst = []
 
         filenames_colour = os.listdir(color_images_path)
-        filenames_bw = os.listdir(b_and_w_images_path)
+        # filenames_bw = os.listdir(b_and_w_images_path)
 
         upper_bound = min(len(filenames_colour), upper_bound)
 
         for file_name in filenames_colour[lower_bound: upper_bound]:
             self.images_color_lst.append(color_images_path + "/" + file_name)
 
-        for file_name in filenames_bw[lower_bound: upper_bound]:
-            self.images_b_and_w_lst.append(b_and_w_images_path + "/" + file_name)
+        # for file_name in filenames_colour[lower_bound: upper_bound]:
+        #     self.images_b_and_w_lst.append(b_and_w_images_path + "/" + file_name)
 
 
     def __len__(self):
@@ -31,7 +31,7 @@ class ImageDataset(data.Dataset):
 
     def __getitem__(self, index):
         image_color = Image.open(self.images_color_lst[index])
-        image_b_and_w = Image.open(self.images_b_and_w_lst[index]).convert('L')
+        image_b_and_w = Image.open(self.images_color_lst[index]).convert('1')
 
         if self.transform is not None:
             image_color = self.transform(image_color)

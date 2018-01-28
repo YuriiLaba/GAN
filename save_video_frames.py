@@ -1,6 +1,6 @@
 import cv2
 
-def save_video_frames(path, step=1, name="frame", size=128, lower_bound=100, upper_bound=100):
+def save_video_frames(path, step=1, name="data/simp1_frame", size=128, lower_bound=100, upper_bound=100):
     vidcap = cv2.VideoCapture(path)
     success,image = vidcap.read()
     count = 0
@@ -17,4 +17,4 @@ def save_video_frames(path, step=1, name="frame", size=128, lower_bound=100, upp
         count += 1
 
 if __name__ == "__main__":
-    save_video_frames("GF_1.mp4", upper_bound=1000, step=10)
+    save_video_frames("Simp_1.mp4",lower_bound=100, upper_bound=30000, step=10)
